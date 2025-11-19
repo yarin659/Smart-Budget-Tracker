@@ -1,0 +1,8 @@
+com/yarin/sbt/dto/TransactionDTO.class
+com/yarin/sbt/model/Transaction$TransactionBuilder.class
+com/yarin/sbt/controller/HealthController.class
+com/yarin/sbt/repository/TransactionRepository.class
+com/yarin/sbt/controller/TransactionController.class
+com/yarin/sbt/SbtApplication.class
+com/yarin/sbt/model/Category.class
+com/yarin/sbt/model/Transaction.class
