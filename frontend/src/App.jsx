@@ -6,7 +6,6 @@ import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Goals from "./pages/Goals";
 import Insights from "./pages/Insights";
-import { TransactionsProvider } from "./context/TransactionsContext";
 
 const GlobalStyle = createGlobalStyle`
   body {
@@ -20,17 +19,15 @@ const GlobalStyle = createGlobalStyle`
 export default function App() {
   return (
     <ThemeProvider theme={theme}>
-      <TransactionsProvider>
-        <GlobalStyle />
-        <NavBar />
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/goals" element={<Goals />} />
-          <Route path="/insights" element={<Insights />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </TransactionsProvider>
+      <GlobalStyle />
+      <NavBar />
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/transactions" element={<Transactions />} />
+        <Route path="/goals" element={<Goals />} />
+        <Route path="/insights" element={<Insights />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </ThemeProvider>
   );
 }

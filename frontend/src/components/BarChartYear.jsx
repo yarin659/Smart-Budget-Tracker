@@ -1,5 +1,6 @@
-// LOGIC PART
-import React, { useState } from "react";
+// ===== Logic =====
+import React, { useContext, useMemo, useState } from "react";
+import styled from "styled-components";
 import {
   BarChart,
   Bar,
@@ -10,42 +11,74 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import styled from "styled-components";
+import { TransactionsContext } from "../context/TransactionsContext";
 
-export const BarChartYear = ({ yearlyData, year, setYear }) => {
-  const handleChangeYear = (offset) => {
-    setYear((prev) => prev + offset);
+export const BarChartYear = () => {
+  const { transactions } = useContext(TransactionsContext);
+
+  // Extract all years dynamically
+  const years = useMemo(() => {
+    const set = new Set(
+      transactions.map((t) => new Date(t.date).getFullYear())
+    );
+    return Array.from(set).sort((a, b) => b - a);
+  }, [transactions]);
+
+  const [year, setYear] = useState(years[0] || new Date().getFullYear());
+
+  // Build monthly data
+  const data = useMemo(() => {
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      month: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i],
+      income: 0,
+      expense: 0,
+    }));
+
+    transactions.forEach((t) => {
+      const d = new Date(t.date);
+
+      if (d.getFullYear() !== year) return;
+      const m = d.getMonth();
+      const value = Math.abs(Number(t.amount)); // <— always positive
+
+      if (t.type === "income") months[m].income += value;
+      if (t.type === "expense") months[m].expense += value;
+    });
+
+    return months;
+  }, [transactions, year]);
+
+  const goPrev = () => {
+    const idx = years.indexOf(year);
+    if (idx < years.length - 1) setYear(years[idx + 1]);
   };
 
-  const data = yearlyData[year] || [];
+  const goNext = () => {
+    const idx = years.indexOf(year);
+    if (idx > 0) setYear(years[idx - 1]);
+  };
 
   return (
     <Wrapper>
       <Header>
         <h3>Income vs Expenses ({year})</h3>
+
         <Controls>
-          <Button onClick={() => handleChangeYear(-1)} disabled={!yearlyData[year - 1]}>
+          <Button onClick={goPrev} disabled={years.indexOf(year) === years.length - 1}>
             ← Prev
           </Button>
-          <Button onClick={() => handleChangeYear(1)} disabled={!yearlyData[year + 1]}>
+          <Button onClick={goNext} disabled={years.indexOf(year) === 0}>
             Next →
           </Button>
         </Controls>
       </Header>
 
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={350}>
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#DDD" />
           <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip
-            formatter={(value) => `₪${value.toLocaleString()}`}
-            contentStyle={{
-              background: "#fff",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-            }}
-          />
+          <YAxis domain={[0, "auto"]} />
+          <Tooltip formatter={(v) => `₪${v.toLocaleString()}`} />
           <Legend />
           <Bar dataKey="income" fill="#00C49F" radius={[6, 6, 0, 0]} />
           <Bar dataKey="expense" fill="#FF4D4D" radius={[6, 6, 0, 0]} />
@@ -55,24 +88,22 @@ export const BarChartYear = ({ yearlyData, year, setYear }) => {
   );
 };
 
-// STYLING PART
+// ===== Styling =====
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.colors.card};
   border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: 12px;
-  padding: 20px 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  border-radius: 16px;
 `;
 
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
   margin-bottom: 16px;
 
   h3 {
+    font-size: 1.2rem;
     color: ${({ theme }) => theme.colors.accent};
-    font-size: 1.1rem;
   }
 `;
 
@@ -83,20 +114,14 @@ const Controls = styled.div`
 
 const Button = styled.button`
   background: ${({ theme }) => theme.colors.accent};
-  color: #fff;
   border: none;
   padding: 6px 12px;
   border-radius: 8px;
-  cursor: pointer;
   font-weight: 600;
-  transition: 0.2s;
-
-  &:hover:not(:disabled) {
-    background: #00b977;
-  }
+  color: white;
+  cursor: pointer;
 
   &:disabled {
     opacity: 0.5;
-    cursor: not-allowed;
   }
 `;

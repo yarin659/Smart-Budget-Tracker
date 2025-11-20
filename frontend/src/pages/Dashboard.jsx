@@ -1,69 +1,65 @@
 // ===== Logic =====
-import { useState } from "react";
 import styled from "styled-components";
-import { YearSelector } from "../components/YearSelector";
+import { useContext, useMemo } from "react";
+
+import { TransactionsContext } from "../context/TransactionsContext";
+
 import { SummaryCards } from "../components/SummaryCards";
+import { GoalsMiniWidgets } from "../components/GoalsMiniWidgets";
+import { LastTransactions } from "../components/LastTransactions";
 import { BarChartYear } from "../components/BarChartYear";
 import { ExpensePieChart } from "../components/ExpensePieChart";
 
 export default function Dashboard() {
-  // ===== Mock Data =====
-  const yearlyData = {
-    2025: [
-      { month: "Jan", income: 4800, expense: 2500 },
-      { month: "Feb", income: 4700, expense: 2200 },
-      { month: "Mar", income: 4900, expense: 3100 },
-      { month: "Apr", income: 5200, expense: 2600 },
-      { month: "May", income: 5100, expense: 2800 },
-      { month: "Jun", income: 5300, expense: 2900 },
-      { month: "Jul", income: 4800, expense: 2700 },
-      { month: "Aug", income: 5000, expense: 2600 },
-      { month: "Sep", income: 4950, expense: 2550 },
-      { month: "Oct", income: 5100, expense: 2750 },
-      { month: "Nov", income: 5050, expense: 2800 },
-      { month: "Dec", income: 5200, expense: 2950 },
-    ],
-    2024: [
-      { month: "Jan", income: 4600, expense: 2400 },
-      { month: "Feb", income: 4700, expense: 2500 },
-      { month: "Mar", income: 4800, expense: 2600 },
-    ],
-  };
+  const { transactions } = useContext(TransactionsContext);
 
-  const expenseCategories = [
-    { category: "Food", value: 650 },
-    { category: "Fuel", value: 400 },
-    { category: "Utilities", value: 300 },
-    { category: "Rent", value: 800 },
-    { category: "Insurance", value: 200 },
-    { category: "Other", value: 150 },
-  ];
+  // === Calculate Stats ===
+  const currentYear = new Date().getFullYear();
+  const yearTx = transactions.filter(
+    (t) => new Date(t.date).getFullYear() === currentYear
+  );
 
-  // ===== Logic =====
-  const [year, setYear] = useState(2025);
-  const totalIncome = yearlyData[year].reduce((acc, m) => acc + m.income, 0);
-  const totalExpenses = yearlyData[year].reduce((acc, m) => acc + m.expense, 0);
+  const totalIncome = yearTx
+    .filter((t) => t.type === "income")
+    .reduce((a, b) => a + b.amount, 0);
+
+  const totalExpenses = yearTx
+    .filter((t) => t.type === "expense")
+    .reduce((a, b) => a + b.amount, 0);
+
   const balance = totalIncome - totalExpenses;
+
+  const lastFive = [...transactions]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5);
 
   return (
     <Wrapper>
-      <Header>Dashboard - {year}</Header>
 
-      {/* Year Selector */}
-      <YearSelector
-        year={year}
-        setYear={setYear}
-        options={Object.keys(yearlyData).sort((a, b) => b - a)}
+      {/* 🔝 Summary Cards */}
+      <SummaryCards
+        balance={balance}
+        income={totalIncome}
+        expenses={totalExpenses}
       />
 
-      {/* Summary Cards */}
-      <SummaryCards balance={balance} income={totalIncome} expenses={totalExpenses} />
+      {/* 🔝 Goals + Last Transactions */}
+      <TopSection>
+        <GoalsMiniWidgets />
+        <LastTransactions items={lastFive} />
+      </TopSection>
 
-      {/* Charts */}
-      <ChartsWrapper>
-        <BarChartYear yearlyData={yearlyData} year={year} setYear={setYear} />
-        <ExpensePieChart data={expenseCategories} />
-      </ChartsWrapper>
+      {/* 🔻 Bottom Charts */}
+      <ChartsSection>
+        <BarChartSection>
+          <BarChartYear />
+        </BarChartSection>
+
+        <PieChartSection>
+          <ExpensePieChart />
+        </PieChartSection>
+      </ChartsSection>
+
     </Wrapper>
   );
 }
@@ -75,20 +71,32 @@ const Wrapper = styled.section`
   margin: 0 auto;
 `;
 
-const Header = styled.h1`
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: ${({ theme }) => theme.colors.accent};
-`;
-
-const ChartsWrapper = styled.div`
+const TopSection = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1.2fr 1fr;
   gap: 24px;
-  align-items: start;
+  margin-top: 16px;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
+`;
+
+const ChartsSection = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  margin-top: 32px;
+  gap: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BarChartSection = styled.div`
+  width: 100%;
+`;
+
+const PieChartSection = styled.div`
+  width: 100%;
 `;

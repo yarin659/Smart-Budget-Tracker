@@ -1,92 +1,98 @@
 // ===== Logic =====
-import React from "react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import React, { useContext, useMemo } from "react";
 import styled from "styled-components";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { TransactionsContext } from "../context/TransactionsContext";
 
 const COLORS = [
-  "#00C49F", // Food
-  "#FF8042", // Rent
-  "#0088FE", // Utilities
-  "#FFBB28", // Insurance
-  "#FF4D4D", // Other
-  "#A65FF3", // Fuel
+  "#00C49F",
+  "#FF8042",
+  "#0088FE",
+  "#FFBB28",
+  "#FF4D4D",
+  "#A65FF3",
+  "#36CFC9",
+  "#DA70D6",
 ];
 
-export const ExpensePieChart = ({ data }) => {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+export const ExpensePieChart = () => {
+  const { transactions } = useContext(TransactionsContext);
 
-  const renderPercentageLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    value,
-  }) => {
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.55; 
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-    const percentage = ((value / total) * 100).toFixed(1);
+  const chartData = useMemo(() => {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
 
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="#000"
-        textAnchor="middle"
-        dominantBaseline="central"
-        style={{
-          fontSize: "0.9rem",
-          fontWeight: 600,
-          pointerEvents: "none",
-        }}
-      >
-        {percentage}%
-      </text>
-    );
-  };
-
-  // === Tooltip מותאם ===
-  const renderCustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const { name, value } = payload[0];
-      const percentage = ((value / total) * 100).toFixed(1);
+    const exp = transactions.filter((t) => {
+      const d = new Date(t.date);
       return (
-        <TooltipBox>
-          <p>
-            <strong>{name}</strong>: ₪{value.toLocaleString()} ({percentage}%)
-          </p>
-        </TooltipBox>
+        t.type === "expense" &&
+        d.getMonth() === month &&
+        d.getFullYear() === year
       );
-    }
-    return null;
-  };
+    });
+
+    const map = {};
+    exp.forEach((t) => {
+      const value = Math.abs(Number(t.amount)); // <— always positive
+      if (!map[t.category]) map[t.category] = 0;
+      map[t.category] += value;
+    });
+
+    return Object.entries(map).map(([category, value]) => ({
+      category,
+      value,
+    }));
+  }, [transactions]);
+
+  const total = chartData.reduce((a, b) => a + b.value, 0);
+
+  // Empty state
+  if (chartData.length === 0) {
+    return (
+      <Wrapper>
+        <h3>Expense Breakdown (This Month)</h3>
+        <Empty>No expenses this month.</Empty>
+      </Wrapper>
+    );
+  }
 
   return (
     <Wrapper>
-      <h3>Expense Breakdown (Current Month)</h3>
-      <ResponsiveContainer width="100%" height={380}>
+      <h3>Expense Breakdown (This Month)</h3>
+
+      <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie
-            data={data}
-            dataKey="value"
-            nameKey="category"
-            cx="50%"
-            cy="50%"
-            innerRadius={80}
-            outerRadius={140}
-            label={renderPercentageLabel} 
-            labelLine={false} 
-          >
-            {data.map((_, index) => (
-              <Cell key={index} fill={COLORS[index % COLORS.length]} />
+              data={chartData}
+              dataKey="value"
+              nameKey="category"
+              cx="50%"
+              cy="50%"
+              innerRadius={50}
+              outerRadius={100}
+              label={({ value }) => `${((value / total) * 100).toFixed(1)}%`}
+              labelLine={false}
+              labelRadius={80} 
+            >
+
+            {chartData.map((_, i) => (
+              <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip content={renderCustomTooltip} />
+
+          <Tooltip formatter={(v) => `₪${v.toLocaleString()}`} />
           <Legend />
         </PieChart>
       </ResponsiveContainer>
+
     </Wrapper>
   );
 };
@@ -95,29 +101,20 @@ export const ExpensePieChart = ({ data }) => {
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.colors.card};
   border: 1px solid ${({ theme }) => theme.colors.border};
+  padding: 10px;
   border-radius: 16px;
-  padding: 24px 24px;
-  margin-top: 32px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
 
   h3 {
+    font-size: 1.2rem;
     color: ${({ theme }) => theme.colors.accent};
-    margin-bottom: 32px;
-    font-size: 1.3rem;
     text-align: center;
+    margin-bottom: 20px;
   }
 `;
 
-const TooltipBox = styled.div`
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  padding: 8px 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  font-size: 0.9rem;
-  font-weight: 500;
+const Empty = styled.div`
+  font-size: 1rem;
+  text-align: center;
+  padding: 60px 0;
+  color: ${({ theme }) => theme.colors.textSecondary};
 `;

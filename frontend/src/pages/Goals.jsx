@@ -1,6 +1,7 @@
 // ===== Logic =====
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import styled from "styled-components";
+import { useGoals } from "../hooks/useGoals";
 import {
   LineChart,
   Line,
@@ -11,15 +12,9 @@ import {
 } from "recharts";
 
 export default function Goals() {
-  const [goals, setGoals] = useState([]);
-  const [editGoalId, setEditGoalId] = useState(null);
-  const [editForm, setEditForm] = useState({
-    addAmount: "",
-    removeAmount: "",
-    target: "",
-    monthlyDeposit: "",
-  });
+  const { goals, addGoal, updateGoal, deleteGoal } = useGoals();
 
+  // Add form
   const [form, setForm] = useState({
     name: "",
     target: "",
@@ -28,33 +23,19 @@ export default function Goals() {
     deadline: "",
   });
 
-  // Load from localStorage
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("goals") || "[]");
-    setGoals(stored);
-  }, []);
+  // Edit form
+  const [editGoalId, setEditGoalId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    addAmount: "",
+    removeAmount: "",
+    target: "",
+    monthlyDeposit: "",
+  });
 
-  const saveGoals = (data) => {
-    localStorage.setItem("goals", JSON.stringify(data));
-  };
-
-  // Add new goal
+  // ===== Add Goal =====
   const handleAddGoal = (e) => {
     e.preventDefault();
-
-    const newGoal = {
-      id: Date.now(),
-      ...form,
-      current: 0,
-      recurring: false,
-      monthlyHistory: {},
-      groupMode: false,
-      participants: [],
-    };
-
-    const updated = [...goals, newGoal];
-    setGoals(updated);
-    saveGoals(updated);
+    addGoal(form);
 
     setForm({
       name: "",
@@ -65,33 +46,19 @@ export default function Goals() {
     });
   };
 
-  // Delete goal
-  const deleteGoal = (id) => {
-    const updated = goals.filter((g) => g.id !== id);
-    setGoals(updated);
-    saveGoals(updated);
-  };
+  // ===== Update Goal =====
+  const handleSaveEdit = (goal) => {
+    const add = Number(editForm.addAmount || 0);
+    const remove = Number(editForm.removeAmount || 0);
+    const updatedCurrent = Math.max(0, goal.current + add - remove);
 
-  // Update goal
-  const handleUpdateGoal = (goal) => {
-    const updated = goals.map((g) => {
-      if (g.id !== goal.id) return g;
-
-      const add = Number(editForm.addAmount || 0);
-      const remove = Number(editForm.removeAmount || 0);
-      const newCurrent = Math.max(0, Number(g.current) + add - remove);
-
-      return {
-        ...g,
-        current: newCurrent,
-        target: editForm.target || g.target,
-        monthlyDeposit: editForm.monthlyDeposit || g.monthlyDeposit,
-      };
+    updateGoal(goal.id, {
+      current: updatedCurrent,
+      target: editForm.target || goal.target,
+      monthlyDeposit: editForm.monthlyDeposit || goal.monthlyDeposit,
     });
 
-    setGoals(updated);
-    saveGoals(updated);
-
+    // reset edit box
     setEditGoalId(null);
     setEditForm({
       addAmount: "",
@@ -101,38 +68,11 @@ export default function Goals() {
     });
   };
 
-  // Auto deposit simulation + monthly history
-  useEffect(() => {
-    const today = new Date().getDate();
-    const monthKey = `${new Date().getFullYear()}-${String(
-      new Date().getMonth() + 1
-    ).padStart(2, "0")}`;
-
-    const updated = goals.map((g) => {
-      if (Number(g.autoDate) === today) {
-        const deposit = Number(g.monthlyDeposit);
-
-        const newCurr = Math.min(Number(g.current) + deposit, Number(g.target));
-
-        const updatedHistory = {
-          ...g.monthlyHistory,
-          [monthKey]: (g.monthlyHistory?.[monthKey] || 0) + deposit,
-        };
-
-        return { ...g, current: newCurr, monthlyHistory: updatedHistory };
-      }
-      return g;
-    });
-
-    setGoals(updated);
-    saveGoals(updated);
-  }, []);
-
   return (
     <Wrapper>
       <Header>💰 Saving Goals</Header>
 
-      {/* ===== Form ===== */}
+      {/* ===== Add Goal Form ===== */}
       <Form onSubmit={handleAddGoal}>
         <InputsRow>
           <Input
@@ -184,7 +124,7 @@ export default function Goals() {
       <GoalList>
         {goals.map((g) => {
           const progress = Math.min(
-            (Number(g.current) / Number(g.target)) * 100,
+            (g.current / g.target) * 100,
             100
           ).toFixed(1);
 
@@ -196,11 +136,10 @@ export default function Goals() {
             <GoalCard key={g.id}>
               <RowBetween>
                 <GoalTitle>{g.name}</GoalTitle>
-
-                {/* DELETE BUTTON */}
                 <DeleteButton onClick={() => deleteGoal(g.id)}>❌</DeleteButton>
               </RowBetween>
 
+              {/* Progress Bar */}
               <ProgressContainer>
                 <ProgressFill style={{ width: `${progress}%` }} />
               </ProgressContainer>
@@ -212,9 +151,7 @@ export default function Goals() {
                 <span>{progress}%</span>
               </GoalDetails>
 
-              <GoalInfo>
-                💸 {g.monthlyDeposit}₪ deposited on day {g.autoDate}
-              </GoalInfo>
+              <GoalInfo>💸 {g.monthlyDeposit}₪ on day {g.autoDate}</GoalInfo>
 
               <GoalInfo>
                 📅 This month: {g.monthlyHistory?.[currentMonthKey] || 0} ₪
@@ -229,7 +166,7 @@ export default function Goals() {
                 })}
               </Deadline>
 
-              {/* UPDATE BUTTON */}
+              {/* Update Button */}
               <UpdateButton
                 onClick={() => {
                   setEditGoalId(g.id);
@@ -244,7 +181,7 @@ export default function Goals() {
                 Update Goal
               </UpdateButton>
 
-              {/* EDIT BOX */}
+              {/* Edit Box */}
               {editGoalId === g.id && (
                 <EditBox>
                   <EditInput
@@ -282,20 +219,17 @@ export default function Goals() {
                     placeholder="New monthly deposit"
                     value={editForm.monthlyDeposit}
                     onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        monthlyDeposit: e.target.value,
-                      })
+                      setEditForm({ ...editForm, monthlyDeposit: e.target.value })
                     }
                   />
 
-                  <SaveEditButton onClick={() => handleUpdateGoal(g)}>
+                  <SaveEditButton onClick={() => handleSaveEdit(g)}>
                     Save Changes
                   </SaveEditButton>
                 </EditBox>
               )}
 
-              {/* MONTHLY CHART */}
+              {/* Monthly Chart */}
               {Object.keys(g.monthlyHistory).length > 0 && (
                 <ChartWrapper>
                   <ResponsiveContainer width="100%" height={180}>
@@ -328,7 +262,7 @@ export default function Goals() {
   );
 }
 
-/* ===== Styled Components ===== */
+/* ===== Styling ===== */
 
 const Wrapper = styled.div`
   padding: 2rem;
@@ -352,41 +286,31 @@ const Form = styled.form`
   padding: 7px 0;
 `;
 
-
 const InputsRow = styled.div`
   display: flex;
   gap: 10px;
   flex-wrap: nowrap;
-  width: 100%;
 `;
 
-
 const Input = styled.input`
-  width: 180px;   
-  max-width: 180px;   
-  min-width: 180px; 
+  width: 180px;
   padding: 10px;
   border: 1px solid #33a360;
   border-radius: 8px;
   background: white;
   color: black;
-  font-size: 0.95rem;
 `;
 
 const AddButton = styled.button`
   background: ${({ theme }) => theme.colors.accent};
   color: black;
   padding: 12px 22px;
-  border: none;
   border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
   font-weight: 700;
-  align-self: center; 
-  width: 200px;
-  margin-top: 5px;
+  border: none;
+  cursor: pointer;
+  align-self: center;
 `;
-
 
 const GoalList = styled.div`
   display: flex;
@@ -407,7 +331,6 @@ const RowBetween = styled.div`
 `;
 
 const GoalTitle = styled.h3`
-  margin: 0;
   color: black;
 `;
 
@@ -415,7 +338,6 @@ const ProgressContainer = styled.div`
   background: rgba(0, 0, 0, 0.1);
   height: 10px;
   border-radius: 10px;
-  overflow: hidden;
   margin-top: 8px;
 `;
 
@@ -428,7 +350,6 @@ const GoalDetails = styled.div`
   display: flex;
   justify-content: space-between;
   margin-top: 6px;
-  font-size: 0.9rem;
   color: black;
 `;
 
@@ -437,27 +358,23 @@ const GoalInfo = styled.small`
 `;
 
 const Deadline = styled.small`
-  display: block;
-  margin-top: 6px;
   color: #ff4d4d;
 `;
 
 const DeleteButton = styled.button`
-  background: transparent;
+  background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.2rem;
 `;
 
 const UpdateButton = styled.button`
   margin-top: 10px;
   padding: 8px 14px;
   background: ${({ theme }) => theme.colors.accent};
-  border: none;
   border-radius: 8px;
-  cursor: pointer;
-  color: black;
+  border: none;
   font-weight: 600;
+  cursor: pointer;
 `;
 
 const EditBox = styled.div`
@@ -483,9 +400,8 @@ const SaveEditButton = styled.button`
   background: #00ff99;
   border-radius: 8px;
   border: none;
-  cursor: pointer;
-  color: black;
   font-weight: 700;
+  cursor: pointer;
 `;
 
 const ChartWrapper = styled.div`
