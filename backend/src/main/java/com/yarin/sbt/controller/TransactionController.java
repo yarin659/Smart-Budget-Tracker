@@ -1,10 +1,7 @@
 package com.yarin.sbt.controller;
 
-import com.yarin.sbt.dto.TransactionDTO;
 import com.yarin.sbt.model.Transaction;
-import com.yarin.sbt.model.Category;
-import com.yarin.sbt.repository.TransactionRepository;
-import jakarta.validation.Valid;
+import com.yarin.sbt.service.TransactionService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,24 +10,25 @@ import java.util.List;
 @RequestMapping("/api/transactions")
 @CrossOrigin(origins = "*")
 public class TransactionController {
-    private final TransactionRepository repo;
-    public TransactionController(TransactionRepository repo) { this.repo = repo; }
+
+    private final TransactionService service;
+
+    public TransactionController(TransactionService service) {
+        this.service = service;
+    }
 
     @GetMapping
-    public List<Transaction> all() { return repo.findAll(); }
+    public List<Transaction> getAll() {
+        return service.all();
+    }
 
     @PostMapping
-    public Transaction create(@Valid @RequestBody TransactionDTO dto) {
-        Transaction t = Transaction.builder()
-                .date(dto.date())
-                .amount(dto.amount())
-                .title(dto.title())
-                .category(dto.category() == null ? Category.OTHER : dto.category())
-                .notes(dto.notes())
-                .build();
-        return repo.save(t);
+    public Transaction create(@RequestBody Transaction t) {
+        return service.add(t);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) { repo.deleteById(id); }
+    public void remove(@PathVariable Long id) {
+        service.delete(id);
+    }
 }

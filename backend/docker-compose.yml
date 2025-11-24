@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: sbt-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/sbt
+      - SPRING_DATASOURCE_USERNAME=yarin
+      - SPRING_DATASOURCE_PASSWORD=1234
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    container_name: sbt-db
+    restart: always
+    environment:
+      POSTGRES_USER: yarin
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: sbt
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
