@@ -1,10 +1,13 @@
+// ===== Logic =====
 import styled from "styled-components";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { FiMenu, FiX } from "react-icons/fi"; 
+import { AuthContext } from "../context/AuthContext";
 
 const NavBar = () => {
   const [open, setOpen] = useState(false);
+  const { user, logout } = useContext(AuthContext);
 
   return (
     <Bar>
@@ -16,7 +19,15 @@ const NavBar = () => {
         <Button to="/goals">Goals</Button>
         <Button to="/insights">Insights</Button>
 
-
+        {/* === Auth Buttons (Desktop) === */}
+        {!user ? (
+          <>
+            <Button to="/login">Login</Button>
+            <Button to="/register">Register</Button>
+          </>
+        ) : (
+          <LogoutButton onClick={logout}>Logout</LogoutButton>
+        )}
       </Right>
 
       <MenuButton onClick={() => setOpen(!open)}>
@@ -30,6 +41,15 @@ const NavBar = () => {
           <Link to="/goals">Goals</Link>     
           <Link to="/insights">Insights</Link>
 
+          {/* === Auth Buttons (Mobile) === */}
+          {!user ? (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/register">Register</Link>
+            </>
+          ) : (
+            <LogoutMobile onClick={logout}>Logout</LogoutMobile>
+          )}
         </MobileMenu>
       )}
     </Bar>
@@ -38,7 +58,7 @@ const NavBar = () => {
 
 export default NavBar;
 
-
+// ===== Styling =====
 
 const Bar = styled.nav`
   display: flex;
@@ -77,6 +97,22 @@ const Button = styled(Link)`
   color: ${({ theme }) => theme.colors.text};
   text-decoration: none;
   font-weight: 500;
+  transition: 0.2s;
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.accent};
+    color: ${({ theme }) => theme.colors.accent};
+  }
+`;
+
+const LogoutButton = styled.button`
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  background: ${({ theme }) => theme.colors.card};
+  color: ${({ theme }) => theme.colors.text};
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
   transition: 0.2s;
   &:hover {
     border-color: ${({ theme }) => theme.colors.accent};
@@ -125,5 +161,20 @@ const MobileMenu = styled.div`
       background: ${({ theme }) => theme.colors.card};
       color: ${({ theme }) => theme.colors.accent};
     }
+  }
+`;
+
+const LogoutMobile = styled.button`
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  text-align: left;
+  color: ${({ theme }) => theme.colors.text};
+  font-size: 1rem;
+  cursor: pointer;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.card};
+    color: ${({ theme }) => theme.colors.accent};
   }
 `;
