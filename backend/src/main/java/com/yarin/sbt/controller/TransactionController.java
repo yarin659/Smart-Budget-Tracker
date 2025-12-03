@@ -1,7 +1,9 @@
 package com.yarin.sbt.controller;
 
 import com.yarin.sbt.model.Transaction;
+import com.yarin.sbt.security.JwtUtil;
 import com.yarin.sbt.service.TransactionService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,18 +19,26 @@ public class TransactionController {
         this.service = service;
     }
 
+    // מקבל userId מהפילטר — אין יותר userId מהפרונט
+    private Long getUserId(HttpServletRequest req) {
+        return (Long) req.getAttribute("userId");
+    }
+
     @GetMapping
-    public List<Transaction> getAll() {
-        return service.all();
+    public List<Transaction> getAll(HttpServletRequest req) {
+        Long userId = getUserId(req);
+        return service.all(userId);
     }
 
     @PostMapping
-    public Transaction create(@RequestBody Transaction t) {
-        return service.add(t);
+    public Transaction create(@RequestBody Transaction t, HttpServletRequest req) {
+        Long userId = getUserId(req);
+        return service.add(t, userId);
     }
 
     @DeleteMapping("/{id}")
-    public void remove(@PathVariable Long id) {
-        service.delete(id);
+    public void remove(@PathVariable("id") Long id, HttpServletRequest req) {
+        Long userId = getUserId(req);
+        service.delete(id, userId);
     }
 }
