@@ -52,42 +52,59 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  console.log("1) handleSubmit STARTED");
+  console.log("2) form:", form);
 
-    let valid = true;
-    const newErrors = { email: "", password: "" };
+  setGeneralError("");
 
-    if (!form.email) {
-      newErrors.email = "נא להזין אימייל";
-      valid = false;
-    } else if (!validateEmail(form.email)) {
-      newErrors.email = "אימייל לא תקין";
-      valid = false;
-    }
+  let valid = true;
+  const newErrors = { email: "", password: "" };
 
-    if (!form.password) {
-      newErrors.password = "נא להזין סיסמה";
-      valid = false;
-    } else if (form.password.length < 6) {
-      newErrors.password = "הסיסמה חייבת להיות לפחות 6 תווים";
-      valid = false;
-    }
+  if (!form.email) valid = false;
+  if (!form.password) valid = false;
 
-    setErrors(newErrors);
-    if (!valid) return;
+  setErrors(newErrors);
+  if (!valid) {
+    console.log("3) Validation FAILED");
+    return;
+  }
 
-    // ===== Simulated backend check =====
-    // כשתחבר לבקנד נחליף בתגובה אמיתית
-    if (form.password !== "123456") {
-      // דוגמת טעות לסיסמה לא נכונה
+  console.log("3) Validation PASSED");
+
+  try {
+    console.log("4) Sending fetch...");
+
+    const res = await fetch("http://localhost:8080/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
+    console.log("5) fetch result", res);
+
+    if (!res.ok) {
+      console.log("6) Server returned NOT OK");
       setGeneralError("אימייל או סיסמה שגויים");
       return;
     }
 
-    login({ email: form.email });
+    const data = await res.json();
+    console.log("7) Server data:", data);
+
+    login({ token: data.token, userId: data.id });
+    console.log("8) LOGIN SUCCESS → navigating");
+
     navigate("/");
-  };
+
+  } catch (err) {
+    console.log("ERR", err);
+    setGeneralError("שגיאה בהתחברות לשרת");
+  }
+};
+
+
 
   return (
     <Wrapper>

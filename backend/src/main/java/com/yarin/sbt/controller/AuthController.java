@@ -23,27 +23,40 @@ public class AuthController {
         this.jwt = jwt;
     }
 
+    // ---------------------------
+    //        SIGNUP
+    // ---------------------------
     @PostMapping("/signup")
     public Map<String, String> signup(@RequestBody User user) {
-        if (repo.existsByUsername(user.getUsername())) {
-            throw new RuntimeException("Username already exists");
+
+        // check by email
+        if (repo.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Email already exists");
         }
 
+        // hash password
         user.setPassword(encoder.encode(user.getPassword()));
         repo.save(user);
 
         return Map.of("status", "OK");
     }
 
+    // ---------------------------
+    //        LOGIN
+    // ---------------------------
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody User user) {
-        User dbUser = repo.findByUsername(user.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // find by email
+        User dbUser = repo.findByEmail(user.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email not found"));
+
+        // verify password
         if (!encoder.matches(user.getPassword(), dbUser.getPassword())) {
             throw new RuntimeException("Invalid password");
         }
 
+        // generate JWT
         String token = jwt.generateToken(dbUser.getId());
 
         return Map.of(

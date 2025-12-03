@@ -1,6 +1,6 @@
 // ===== Logic =====
 import styled from "styled-components";
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useState, useEffect } from "react";
 
 import { TransactionsContext } from "../context/TransactionsContext";
 
@@ -12,6 +12,14 @@ import { ExpensePieChart } from "../components/ExpensePieChart";
 
 export default function Dashboard() {
   const { transactions } = useContext(TransactionsContext);
+
+  // === Get Logged User ===
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    const name = localStorage.getItem("userName");
+    if (name) setUserName(name);
+  }, []);
 
   // === Calculate Stats ===
   const currentYear = new Date().getFullYear();
@@ -36,20 +44,25 @@ export default function Dashboard() {
   return (
     <Wrapper>
 
-      {/* 🔝 Summary Cards */}
+      {/* Greeting */}
+      <Greeting>
+        Hello {userName || "Friend"} 👋
+      </Greeting>
+
+      {/* Summary Cards */}
       <SummaryCards
         balance={balance}
         income={totalIncome}
         expenses={totalExpenses}
       />
 
-      {/* 🔝 Goals + Last Transactions */}
+      {/* Goals + Last Transactions */}
       <TopSection>
         <GoalsMiniWidgets />
         <LastTransactions items={lastFive} />
       </TopSection>
 
-      {/* 🔻 Bottom Charts */}
+      {/* Bottom Charts */}
       <ChartsSection>
         <BarChartSection>
           <BarChartYear />
@@ -69,6 +82,12 @@ const Wrapper = styled.section`
   padding: 32px;
   max-width: 1200px;
   margin: 0 auto;
+`;
+
+const Greeting = styled.h1`
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 24px;
 `;
 
 const TopSection = styled.div`

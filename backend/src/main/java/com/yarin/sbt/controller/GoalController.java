@@ -37,4 +37,10 @@ public class GoalController {
         service.delete(id, uid(req));
     }
 
+    @PutMapping("/{id}")
+    public Goal update(@PathVariable("id") Long id, @RequestBody Goal g, HttpServletRequest req) {
+        return service.update(id, g, uid(req));
+    }
+
+
 }

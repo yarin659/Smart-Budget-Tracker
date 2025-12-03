@@ -5,13 +5,11 @@ import AddTransactionModal from "../components/AddTransactionModal.jsx";
 import { TransactionsContext } from "../context/TransactionsContext";
 
 export default function Transactions() {
-  const { transactions, setTransactions } = useContext(TransactionsContext);
+  const { transactions, saveTransaction, deleteTransaction } = useContext(TransactionsContext);
 
-  // Modal
   const [open, setOpen] = useState(false);
-  const [editTx, setEditTx] = useState(null); // store tx for editing
+  const [editTx, setEditTx] = useState(null);
 
-  // Filters & Search
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterType, setFilterType] = useState("");
@@ -20,44 +18,32 @@ export default function Transactions() {
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
 
-  // Pagination
   const itemsPerPage = 8;
   const [page, setPage] = useState(1);
 
-  // Add or Edit transaction
-  const handleSave = (tx) => {
-    if (editTx) {
-      // Edit
-      setTransactions(
-        transactions.map((t) => (t.id === editTx.id ? { ...editTx, ...tx } : t))
-      );
-    } else {
-      // Add new
-      setTransactions([
-        ...transactions,
-        {
-          ...tx,
-          id: Date.now(),
-          amount: tx.type === "expense" ? -Math.abs(tx.amount) : Math.abs(tx.amount),
-        },
-      ]);
-    }
+  // save directly to backend 
+  const handleSave = async (tx) => {
+    await saveTransaction({
+      ...tx,
+      description: tx.desc,   // map desc -> description
+    });
+
+    setOpen(false);
     setEditTx(null);
   };
 
-  const handleDelete = (id) => {
-    setTransactions(transactions.filter((t) => t.id !== id));
+  const handleDelete = async (id) => {
+    await deleteTransaction(id);
   };
 
   // ===== Filtering + Searching =====
   const filtered = useMemo(() => {
     return transactions
       .filter((t) => {
-        // Smart search: desc/category/amount/date
         const s = search.toLowerCase();
         if (s) {
           const match =
-            t.desc.toLowerCase().includes(s) ||
+            (t.description || "").toLowerCase().includes(s) ||
             t.category.toLowerCase().includes(s) ||
             t.date.includes(s) ||
             String(t.amount).includes(s);
@@ -65,30 +51,29 @@ export default function Transactions() {
           if (!match) return false;
         }
 
-        // Category filter
         if (filterCategory && t.category !== filterCategory) return false;
-
-        // Type filter
         if (filterType && t.type !== filterType) return false;
-
-        // Date range
         if (dateFrom && t.date < dateFrom) return false;
         if (dateTo && t.date > dateTo) return false;
-
-        // Amount range
         if (minAmount && Math.abs(t.amount) < Number(minAmount)) return false;
         if (maxAmount && Math.abs(t.amount) > Number(maxAmount)) return false;
 
         return true;
       })
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [transactions, search, filterCategory, filterType, dateFrom, dateTo, minAmount, maxAmount]);
+  }, [
+    transactions,
+    search,
+    filterCategory,
+    filterType,
+    dateFrom,
+    dateTo,
+    minAmount,
+    maxAmount,
+  ]);
 
-  // ===== Pagination logic =====
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-
-  // Reset to page 1 when filters change
   const resetPage = () => setPage(1);
 
   return (
@@ -105,8 +90,9 @@ export default function Transactions() {
         </AddButton>
       </Header>
 
-      {/* Search & Filters */}
+      {/* Filters */}
       <Filters>
+        {/* Search */}
         <FilterGroup>
           <label>Search</label>
           <input
@@ -119,6 +105,7 @@ export default function Transactions() {
           />
         </FilterGroup>
 
+        {/* Category */}
         <FilterGroup>
           <label>Category</label>
           <select
@@ -135,6 +122,7 @@ export default function Transactions() {
           </select>
         </FilterGroup>
 
+        {/* Type */}
         <FilterGroup>
           <label>Type</label>
           <select
@@ -150,24 +138,18 @@ export default function Transactions() {
           </select>
         </FilterGroup>
 
+        {/* Date filters */}
         <FilterGroup>
           <label>Date From</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
         </FilterGroup>
 
         <FilterGroup>
           <label>Date To</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
         </FilterGroup>
 
+        {/* Amount filters */}
         <FilterGroup>
           <label>Min Amount</label>
           <input
@@ -189,7 +171,6 @@ export default function Transactions() {
         </FilterGroup>
       </Filters>
 
-
       {/* Table */}
       <Table>
         <thead>
@@ -205,10 +186,10 @@ export default function Transactions() {
           {paginated.map((t) => (
             <tr key={t.id}>
               <td>{t.date}</td>
-              <td>{t.desc}</td>
+              <td>{t.description}</td>
               <td>{t.category}</td>
               <td className={t.type}>
-                {t.type === "income" ? "+" : ""}
+                {t.type === "income" ? "+" : "-"}
                 {t.amount.toLocaleString()} ₪
               </td>
               <td>
@@ -219,6 +200,39 @@ export default function Transactions() {
           ))}
         </tbody>
       </Table>
+
+        {/* Mobile Card View */}
+        <CardList>
+          {paginated.map((t) => (
+            <MobileCard key={t.id}>
+              <CardTop>
+                <div className="desc">{t.description}</div>
+                <div className={`amount ${t.type}`}>
+                  {t.type === "income" ? "+" : "-"}
+                  {t.amount.toLocaleString()} ₪
+                </div>
+              </CardTop>
+
+              <CardRow>
+                <span className="label">Date:</span>
+                <span className="value">{t.date}</span>
+              </CardRow>
+
+              <CardRow>
+                <span className="label">Category:</span>
+                <span className="value">{t.category}</span>
+              </CardRow>
+
+              <CardActions>
+                <MiniBtn onClick={() => { setEditTx(t); setOpen(true); }}>Edit</MiniBtn>
+                <MiniBtnDelete onClick={() => handleDelete(t.id)}>Delete</MiniBtnDelete>
+              </CardActions>
+            </MobileCard>
+          ))}
+        </CardList>
+
+
+      
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -235,6 +249,7 @@ export default function Transactions() {
         </Pagination>
       )}
 
+      {/* Modal */}
       {open && (
         <AddTransactionModal
           onClose={() => {
@@ -248,6 +263,7 @@ export default function Transactions() {
     </Wrapper>
   );
 }
+
 
 // ===== Styling =====
 const Wrapper = styled.section`
@@ -365,16 +381,6 @@ const Table = styled.table`
   }
 `;
 
-const CardList = styled.div`
-  display: none;
-
-  @media (max-width: 700px) {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-`;
-
 const Card = styled.div`
   background: ${({ theme }) => theme.colors.card};
   border: 1px solid ${({ theme }) => theme.colors.border};
@@ -472,4 +478,73 @@ const Pagination = styled.div`
     color: ${({ theme }) => theme.colors.text};
   }
 `;
+
+const CardList = styled.div`
+  display: none;
+
+  @media (max-width: 700px) {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 16px;
+  }
+`;
+
+const MobileCard = styled.div`
+  background: ${({ theme }) => theme.colors.card};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+`;
+
+const CardTop = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .desc {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: ${({ theme }) => theme.colors.text};
+  }
+
+  .amount {
+    font-weight: 700;
+    font-size: 1.05rem;
+
+    &.income {
+      color: ${({ theme }) => theme.colors.accent};
+    }
+
+    &.expense {
+      color: #ff4d4d;
+    }
+  }
+`;
+
+const CardRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+
+  .label {
+    color: #777;
+    font-size: 0.85rem;
+  }
+
+  .value {
+    color: ${({ theme }) => theme.colors.text};
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+`;
+
 

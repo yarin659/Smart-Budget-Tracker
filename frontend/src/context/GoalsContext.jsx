@@ -1,97 +1,100 @@
-// ===== Logic =====
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useContext } from "react";
+import { AuthContext } from "./AuthContext";
 
 export const GoalsContext = createContext();
 
 export const GoalsProvider = ({ children }) => {
+  const { token } = useContext(AuthContext);
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load goals (currently from localStorage, later from PostgreSQL)
+  // ===== Load goals from backend =====
   useEffect(() => {
-    // Load from localStorage for now
-    const stored = JSON.parse(localStorage.getItem("goals") || "[]");
-    setGoals(stored);
-    setLoading(false);
-  }, []);
+    if (!token) return;
 
-  // Save to localStorage (will be swapped to fetch() in future)
-  const saveGoalsToStorage = (updated) => {
-    localStorage.setItem("goals", JSON.stringify(updated));
-  };
+    const fetchGoals = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/api/goals", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-  // Add a new goal
-  const addGoal = (goalData) => {
-    const newGoal = {
-      id: Date.now(),
-      ...goalData,
-      current: 0,
-      recurring: false,
-      monthlyHistory: {},
-      groupMode: false,
-      participants: [],
+        const data = await res.json();
+        setGoals(data);
+        setLoading(false);
+
+      } catch (err) {
+        console.error("Failed to load goals:", err);
+        setLoading(false);
+      }
     };
 
-    const updated = [...goals, newGoal];
-    setGoals(updated);
-    saveGoalsToStorage(updated);
+    fetchGoals();
+  }, [token]);
+
+  // ===== Add goal =====
+  const addGoal = async (goal) => {
+    try {
+      const res = await fetch("http://localhost:8080/api/goals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(goal),
+      });
+
+      const saved = await res.json();
+      setGoals((prev) => [...prev, saved]);
+
+    } catch (err) {
+      console.error("Failed to add goal:", err);
+    }
   };
 
-  // Update existing goal
-  const updateGoal = (goalId, fields) => {
-    const updated = goals.map((g) =>
-      g.id === goalId ? { ...g, ...fields } : g
-    );
-    setGoals(updated);
-    saveGoalsToStorage(updated);
+  // ===== Delete goal =====
+  const deleteGoal = async (id) => {
+    try {
+      await fetch(`http://localhost:8080/api/goals/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setGoals((prev) => prev.filter((g) => g.id !== id));
+
+    } catch (err) {
+      console.error("Failed to delete goal:", err);
+    }
   };
 
-  // Delete goal
-  const deleteGoal = (goalId) => {
-    const updated = goals.filter((g) => g.id !== goalId);
-    setGoals(updated);
-    saveGoalsToStorage(updated);
-  };
 
-  // Auto deposit simulation (same logic as before)
-  useEffect(() => {
-    const today = new Date().getDate();
-    const monthKey = `${new Date().getFullYear()}-${String(
-      new Date().getMonth() + 1
-    ).padStart(2, "0")}`;
-
-    const updated = goals.map((g) => {
-      if (Number(g.autoDate) === today) {
-        const deposit = Number(g.monthlyDeposit);
-        const newCurrent = Math.min(Number(g.current) + deposit, Number(g.target));
-
-        return {
-          ...g,
-          current: newCurrent,
-          monthlyHistory: {
-            ...g.monthlyHistory,
-            [monthKey]: (g.monthlyHistory?.[monthKey] || 0) + deposit,
-          },
-        };
-      }
-      return g;
+  //edit goal
+const editGoal = async (id, updates) => {
+  try {
+    const res = await fetch(`http://localhost:8080/api/goals/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
     });
 
-    setGoals(updated);
-    saveGoalsToStorage(updated);
-  }, []);
+    const updated = await res.json();
+
+    setGoals((prev) =>
+      prev.map((g) => (g.id === id ? updated : g))
+    );
+
+  } catch (err) {
+    console.error("Failed to update goal:", err);
+  }
+};
+
 
   return (
-    <GoalsContext.Provider
-      value={{
-        goals,
-        loading,
-        addGoal,
-        updateGoal,
-        deleteGoal,
-        setGoals, // optional for advanced usage
-      }}
-    >
+    <GoalsContext.Provider value={{ goals, loading, addGoal, deleteGoal, editGoal }}>
       {children}
     </GoalsContext.Provider>
   );

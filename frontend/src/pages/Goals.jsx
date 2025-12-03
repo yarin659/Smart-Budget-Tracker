@@ -2,70 +2,99 @@
 import { useState } from "react";
 import styled from "styled-components";
 import { useGoals } from "../hooks/useGoals";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 
 export default function Goals() {
-  const { goals, addGoal, updateGoal, deleteGoal } = useGoals();
+  const { goals, addGoal, deleteGoal, editGoal } = useGoals();
 
-  // Add form
+  // Add Goal Form
   const [form, setForm] = useState({
     name: "",
     target: "",
-    monthlyDeposit: "",
-    autoDate: "",
     deadline: "",
+    monthlyAmount: "",
+    monthlyDay: "",
   });
 
-  // Edit form
-  const [editGoalId, setEditGoalId] = useState(null);
-  const [editForm, setEditForm] = useState({
-    addAmount: "",
-    removeAmount: "",
-    target: "",
-    monthlyDeposit: "",
-  });
+  // Currently Editing Goal
+  const [editing, setEditing] = useState(null);
 
   // ===== Add Goal =====
   const handleAddGoal = (e) => {
     e.preventDefault();
-    addGoal(form);
+
+    addGoal({
+      title: form.name,
+      targetAmount: Number(form.target),
+      currentAmount: 0,
+      deadline: form.deadline || null,
+      monthlyAmount: form.monthlyAmount ? Number(form.monthlyAmount) : 0,
+      monthlyDay: form.monthlyDay ? Number(form.monthlyDay) : null,
+    });
 
     setForm({
       name: "",
       target: "",
-      monthlyDeposit: "",
-      autoDate: "",
       deadline: "",
+      monthlyAmount: "",
+      monthlyDay: "",
     });
   };
 
-  // ===== Update Goal =====
-  const handleSaveEdit = (goal) => {
-    const add = Number(editForm.addAmount || 0);
-    const remove = Number(editForm.removeAmount || 0);
-    const updatedCurrent = Math.max(0, goal.current + add - remove);
+  // ===== Helpers =====
+  const formatDate = (value) => {
+    if (!value) return "—";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString();
+  };
 
-    updateGoal(goal.id, {
-      current: updatedCurrent,
-      target: editForm.target || goal.target,
-      monthlyDeposit: editForm.monthlyDeposit || goal.monthlyDeposit,
-    });
+  const computeStatus = (g) => {
+    const current = Number(g.currentAmount || 0);
+    const target = Number(g.targetAmount || 0);
 
-    // reset edit box
-    setEditGoalId(null);
-    setEditForm({
-      addAmount: "",
-      removeAmount: "",
-      target: "",
-      monthlyDeposit: "",
-    });
+    if (target > 0 && current >= target) return "Completed";
+
+    if (g.deadline) {
+      const today = new Date();
+      const dl = new Date(g.deadline);
+      if (today > dl) return "Past deadline";
+    }
+
+    return "In progress";
+  };
+
+  const computeEstimatedFinish = (g) => {
+    const current = Number(g.currentAmount || 0);
+    const target = Number(g.targetAmount || 0);
+    const monthly = Number(g.monthlyAmount || 0);
+
+    const remaining = target - current;
+    if (remaining <= 0 || monthly <= 0) return null;
+
+    const months = Math.ceil(remaining / monthly);
+
+    if (!g.monthlyDay) {
+      return { months, label: `${months} months` };
+    }
+
+    const today = new Date();
+    let year = today.getFullYear();
+    let month = today.getMonth();
+    const day = Math.min(g.monthlyDay, 28);
+
+    let firstPayment = new Date(year, month, day);
+
+    if (firstPayment < today) {
+      month += 1;
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
+      firstPayment = new Date(year, month, day);
+    }
+
+    firstPayment.setMonth(firstPayment.getMonth() + (months - 1));
+    return { months, label: firstPayment.toLocaleDateString() };
   };
 
   return (
@@ -82,38 +111,40 @@ export default function Goals() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
           />
-
           <Input
             type="number"
             placeholder="Target amount"
             value={form.target}
             onChange={(e) => setForm({ ...form, target: e.target.value })}
             required
+            min="0"
           />
+        </InputsRow>
 
-          <Input
-            type="number"
-            placeholder="Monthly deposit"
-            value={form.monthlyDeposit}
-            onChange={(e) =>
-              setForm({ ...form, monthlyDeposit: e.target.value })
-            }
-            required
-          />
-
-          <Input
-            type="number"
-            placeholder="Adding date (1–31)"
-            value={form.autoDate}
-            onChange={(e) => setForm({ ...form, autoDate: e.target.value })}
-            required
-          />
-
+        <InputsRow>
           <Input
             type="date"
             value={form.deadline}
             onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-            required
+          />
+          <Input
+            type="number"
+            placeholder="Monthly deposit"
+            value={form.monthlyAmount}
+            onChange={(e) =>
+              setForm({ ...form, monthlyAmount: e.target.value })
+            }
+            min="0"
+          />
+          <Input
+            type="number"
+            placeholder="Day of month (1–28)"
+            value={form.monthlyDay}
+            onChange={(e) =>
+              setForm({ ...form, monthlyDay: e.target.value })
+            }
+            min="1"
+            max="28"
           />
         </InputsRow>
 
@@ -124,135 +155,175 @@ export default function Goals() {
       <GoalList>
         {goals.map((g) => {
           const progress = Math.min(
-            (g.current / g.target) * 100,
+            (Number(g.currentAmount || 0) / Number(g.targetAmount || 1)) * 100,
             100
           ).toFixed(1);
 
-          const currentMonthKey = `${new Date().getFullYear()}-${String(
-            new Date().getMonth() + 1
-          ).padStart(2, "0")}`;
+          const status = computeStatus(g);
+          const estimate = computeEstimatedFinish(g);
+
+          const isEditing = editing?.id === g.id;
 
           return (
             <GoalCard key={g.id}>
               <RowBetween>
-                <GoalTitle>{g.name}</GoalTitle>
-                <DeleteButton onClick={() => deleteGoal(g.id)}>❌</DeleteButton>
+                <GoalTitle>{g.title}</GoalTitle>
+
+                <RowBetween>
+                  <EditButton onClick={() => setEditing(g)}>✏️</EditButton>
+                  <DeleteButton onClick={() => deleteGoal(g.id)}>❌</DeleteButton>
+                </RowBetween>
               </RowBetween>
 
-              {/* Progress Bar */}
-              <ProgressContainer>
-                <ProgressFill style={{ width: `${progress}%` }} />
-              </ProgressContainer>
+                {isEditing && editing && (
+                  <EditWrapper>
+                    <EditLabel>Edit Goal</EditLabel>
 
-              <GoalDetails>
-                <span>
-                  {g.current} / {g.target} ₪
-                </span>
-                <span>{progress}%</span>
-              </GoalDetails>
+                    {/* Title */}
+                    <EditInput
+                      type="text"
+                      placeholder="Goal name"
+                      value={editing.title}
+                      onChange={(e) =>
+                        setEditing({ ...editing, title: e.target.value })
+                      }
+                    />
 
-              <GoalInfo>💸 {g.monthlyDeposit}₪ on day {g.autoDate}</GoalInfo>
-
-              <GoalInfo>
-                📅 This month: {g.monthlyHistory?.[currentMonthKey] || 0} ₪
-              </GoalInfo>
-
-              <Deadline>
-                ⏰ Deadline:{" "}
-                {new Date(g.deadline).toLocaleDateString("he-IL", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </Deadline>
-
-              {/* Update Button */}
-              <UpdateButton
-                onClick={() => {
-                  setEditGoalId(g.id);
-                  setEditForm({
-                    addAmount: "",
-                    removeAmount: "",
-                    target: g.target,
-                    monthlyDeposit: g.monthlyDeposit,
-                  });
-                }}
-              >
-                Update Goal
-              </UpdateButton>
-
-              {/* Edit Box */}
-              {editGoalId === g.id && (
-                <EditBox>
-                  <EditInput
-                    type="number"
-                    placeholder="Add amount"
-                    value={editForm.addAmount}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, addAmount: e.target.value })
-                    }
-                  />
-
-                  <EditInput
-                    type="number"
-                    placeholder="Remove amount"
-                    value={editForm.removeAmount}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        removeAmount: e.target.value,
-                      })
-                    }
-                  />
-
-                  <EditInput
-                    type="number"
-                    placeholder="New target"
-                    value={editForm.target}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, target: e.target.value })
-                    }
-                  />
-
-                  <EditInput
-                    type="number"
-                    placeholder="New monthly deposit"
-                    value={editForm.monthlyDeposit}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, monthlyDeposit: e.target.value })
-                    }
-                  />
-
-                  <SaveEditButton onClick={() => handleSaveEdit(g)}>
-                    Save Changes
-                  </SaveEditButton>
-                </EditBox>
-              )}
-
-              {/* Monthly Chart */}
-              {Object.keys(g.monthlyHistory).length > 0 && (
-                <ChartWrapper>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart
-                      data={Object.entries(g.monthlyHistory).map(
-                        ([month, value]) => ({
-                          month,
-                          value,
+                    {/* Target amount */}
+                    <EditInput
+                      type="number"
+                      placeholder="Target amount (₪)"
+                      value={editing.targetAmount}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          targetAmount: Number(e.target.value),
                         })
-                      )}
-                    >
-                      <XAxis dataKey="month" stroke="#00ffaa" />
-                      <YAxis stroke="#00ffaa" />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#00ffaa"
-                        strokeWidth={2}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartWrapper>
+                      }
+                    />
+
+                    {/* Current amount */}
+                    <EditInput
+                      type="number"
+                      placeholder="Current saved amount (₪)"
+                      value={editing.currentAmount ?? 0}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          currentAmount: Number(e.target.value),
+                        })
+                      }
+                    />
+
+
+                    {/* Deadline */}
+                    <EditInput
+                      type="date"
+                      placeholder="Deadline"
+                      value={editing.deadline || ""}
+                      onChange={(e) =>
+                        setEditing({ ...editing, deadline: e.target.value })
+                      }
+                    />
+
+                    {/* Monthly deposit */}
+                    <EditInput
+                      type="number"
+                      placeholder="Monthly deposit (₪)"
+                      value={editing.monthlyAmount || ""}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          monthlyAmount: Number(e.target.value),
+                        })
+                      }
+                    />
+
+                    {/* Day of month */}
+                    <EditInput
+                      type="number"
+                      placeholder="Deposit day (1–28)"
+                      min="1"
+                      max="28"
+                      value={editing.monthlyDay || ""}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          monthlyDay: Number(e.target.value),
+                        })
+                      }
+                    />
+
+                    {/* Buttons */}
+                    <EditActions>
+                      <SaveBtn
+                        type="button"
+                        onClick={() => {
+                          editGoal(g.id, {
+                            title: editing.title,
+                            targetAmount: editing.targetAmount,
+                            currentAmount: editing.currentAmount,
+                            deadline: editing.deadline,
+                            monthlyAmount: editing.monthlyAmount,
+                            monthlyDay: editing.monthlyDay,
+                          });
+                          setEditing(null);
+                        }}
+                      >
+                        Save
+                      </SaveBtn>
+
+                      <CancelBtn type="button" onClick={() => setEditing(null)}>
+                        Cancel
+                      </CancelBtn>
+                    </EditActions>
+                  </EditWrapper>
+                )}
+
+
+
+              {!isEditing && (
+                <>
+                  {/* Progress Bar */}
+                  <ProgressContainer>
+                    <ProgressFill style={{ width: `${progress}%` }} />
+                  </ProgressContainer>
+
+                  <GoalDetails>
+                    <span>
+                      {Number(g.currentAmount || 0)}₪ /{" "}
+                      {Number(g.targetAmount || 0)}₪
+                    </span>
+                    <span>{progress}%</span>
+                  </GoalDetails>
+
+                  <GoalMeta>
+                    <MetaItem>
+                      <MetaLabel>Deadline</MetaLabel>
+                      <MetaValue>{formatDate(g.deadline)}</MetaValue>
+                    </MetaItem>
+
+                    <MetaItem>
+                      <MetaLabel>Monthly</MetaLabel>
+                      <MetaValue>
+                        {g.monthlyAmount
+                          ? `${g.monthlyAmount}₪ on day ${g.monthlyDay}`
+                          : "—"}
+                      </MetaValue>
+                    </MetaItem>
+
+                    <MetaItem>
+                      <MetaLabel>Status</MetaLabel>
+                      <MetaValue>{status}</MetaValue>
+                    </MetaItem>
+                  </GoalMeta>
+
+                  {estimate && (
+                    <Estimated>
+                      ~ Estimated finish: {estimate.label} ({estimate.months} months)
+                    </Estimated>
+                  )}
+                </>
               )}
             </GoalCard>
           );
@@ -282,18 +353,18 @@ const Header = styled.h2`
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 7px 0;
+  gap: 12px;
 `;
 
 const InputsRow = styled.div`
   display: flex;
   gap: 10px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 `;
 
 const Input = styled.input`
-  width: 180px;
+  flex: 1;
+  min-width: 160px;
   padding: 10px;
   border: 1px solid #33a360;
   border-radius: 8px;
@@ -322,6 +393,9 @@ const GoalCard = styled.div`
   background: white;
   padding: 1.2rem;
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
 `;
 
 const RowBetween = styled.div`
@@ -338,7 +412,6 @@ const ProgressContainer = styled.div`
   background: rgba(0, 0, 0, 0.1);
   height: 10px;
   border-radius: 10px;
-  margin-top: 8px;
 `;
 
 const ProgressFill = styled.div`
@@ -349,64 +422,89 @@ const ProgressFill = styled.div`
 const GoalDetails = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-top: 6px;
   color: black;
 `;
 
-const GoalInfo = styled.small`
-  color: black;
+const GoalMeta = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 `;
 
-const Deadline = styled.small`
-  color: #ff4d4d;
+const MetaItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+`;
+
+const MetaLabel = styled.span`
+  font-size: 0.8rem;
+  opacity: 0.7;
+`;
+
+const MetaValue = styled.span`
+  font-size: 0.95rem;
+`;
+
+const Estimated = styled.div`
+  margin-top: 4px;
+  font-size: 0.9rem;
+  opacity: 0.8;
+`;
+
+const EditButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 8px;
+  font-size: 1rem;
 `;
 
 const DeleteButton = styled.button`
   background: none;
   border: none;
   cursor: pointer;
+  font-size: 1rem;
 `;
 
-const UpdateButton = styled.button`
-  margin-top: 10px;
-  padding: 8px 14px;
-  background: ${({ theme }) => theme.colors.accent};
-  border-radius: 8px;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-`;
-
-const EditBox = styled.div`
-  margin-top: 1rem;
-  padding: 1rem;
-  background: rgba(255,255,255,0.9);
+const EditWrapper = styled.div`
+  background: #f3f3f3;
+  padding: 12px;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 `;
 
-const EditInput = styled.input`
-  padding: 10px;
-  background: white;
-  border: 1px solid #00ff99;
-  border-radius: 8px;
-  color: black;
+const EditLabel = styled.h4`
+  margin-bottom: 4px;
 `;
 
-const SaveEditButton = styled.button`
-  padding: 10px 16px;
-  background: #00ff99;
-  border-radius: 8px;
+const EditInput = styled.input`
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+`;
+
+const EditActions = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const SaveBtn = styled.button`
+  padding: 6px 12px;
+  background: #4caf50;
   border: none;
-  font-weight: 700;
+  color: white;
+  border-radius: 6px;
   cursor: pointer;
 `;
 
-const ChartWrapper = styled.div`
-  margin-top: 1rem;
-  background: rgba(240,240,240,0.6);
-  padding: 1rem;
-  border-radius: 10px;
+const CancelBtn = styled.button`
+  padding: 6px 12px;
+  background: #999;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
 `;

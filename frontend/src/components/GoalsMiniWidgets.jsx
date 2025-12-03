@@ -4,6 +4,7 @@ import { useGoals } from "../hooks/useGoals";
 export const GoalsMiniWidgets = () => {
   const { goals } = useGoals();
 
+  // לוקחים רק 3 יעדים ראשונים
   const topGoals = goals.slice(0, 3);
 
   return (
@@ -14,14 +15,14 @@ export const GoalsMiniWidgets = () => {
 
       {topGoals.map((g) => {
         const progress = Math.min(
-          (Number(g.current) / Number(g.target)) * 100,
+          (Number(g.currentAmount) / Number(g.targetAmount)) * 100,
           100
         ).toFixed(1);
 
         return (
           <GoalCard key={g.id}>
             <Row>
-              <Name>{g.name}</Name>
+              <Name>{g.title}</Name>
               <Pct>{progress}%</Pct>
             </Row>
 
@@ -29,7 +30,9 @@ export const GoalsMiniWidgets = () => {
               <Fill style={{ width: `${progress}%` }} />
             </Bar>
 
-            <Amounts>{g.current}₪ / {g.target}₪</Amounts>
+            <Amounts>
+              {g.currentAmount}₪ / {g.targetAmount}₪
+            </Amounts>
           </GoalCard>
         );
       })}

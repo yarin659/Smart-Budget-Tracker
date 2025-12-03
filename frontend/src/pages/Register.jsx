@@ -69,42 +69,63 @@ export default function Register() {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    let valid = true;
-    const newErrors = { email: "", password: "", confirm: "" };
+  let valid = true;
+  const newErrors = { email: "", password: "", confirm: "" };
 
-    if (!form.email) {
-      valid = false;
-      newErrors.email = "נא להזין אימייל";
-    } else if (!validateEmail(form.email)) {
-      valid = false;
-      newErrors.email = "אימייל לא תקין";
+  if (!form.email) {
+    valid = false;
+    newErrors.email = "נא להזין אימייל";
+  } else if (!validateEmail(form.email)) {
+    valid = false;
+    newErrors.email = "אימייל לא תקין";
+  }
+
+  if (!form.password) {
+    valid = false;
+    newErrors.password = "נא להזין סיסמה";
+  } else if (form.password.length < 6) {
+    valid = false;
+    newErrors.password = "הסיסמה חייבת לכלול לפחות 6 תווים";
+  }
+
+  if (!form.confirm) {
+    valid = false;
+    newErrors.confirm = "נא להזין אישור סיסמה";
+  } else if (form.confirm !== form.password) {
+    valid = false;
+    newErrors.confirm = "הסיסמאות אינן תואמות";
+  }
+
+  setErrors(newErrors);
+  if (!valid) return;
+
+  try {
+    const res = await fetch("http://localhost:8080/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: form.email,
+        username: form.email.split("@")[0],
+        password: form.password,
+      }),
+    });
+
+    if (!res.ok) {
+      alert("שגיאה בהרשמה!");
+      return;
     }
-
-    if (!form.password) {
-      valid = false;
-      newErrors.password = "נא להזין סיסמה";
-    } else if (form.password.length < 6) {
-      valid = false;
-      newErrors.password = "הסיסמה חייבת לכלול לפחות 6 תווים";
-    }
-
-    if (!form.confirm) {
-      valid = false;
-      newErrors.confirm = "נא להזין אישור סיסמה";
-    } else if (form.confirm !== form.password) {
-      valid = false;
-      newErrors.confirm = "הסיסמאות אינן תואמות";
-    }
-
-    setErrors(newErrors);
-    if (!valid) return;
 
     alert("נרשמת בהצלחה!");
     navigate("/login");
-  };
+
+  } catch (err) {
+    alert("שגיאה בשרת");
+  }
+};
+
 
   return (
     <Wrapper>

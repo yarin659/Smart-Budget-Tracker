@@ -1,21 +1,33 @@
 // ===== Logic =====
 import styled from "styled-components";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function AddTransactionModal({ onClose, onSave, editData }) {
 
-  const [form, setForm] = useState(
-  editData || {
+  const [form, setForm] = useState({
+    id: null,
     date: "",
     desc: "",
     category: "",
     amount: "",
     type: "expense",
-  }
-);
+  });
+
+  // Load edit data when modal opens
+  useEffect(() => {
+    if (editData) {
+      setForm({
+        id: editData.id,
+        date: editData.date,
+        desc: editData.description,   // backend = description
+        category: editData.category,
+        amount: editData.amount,
+        type: editData.type,
+      });
+    }
+  }, [editData]);
 
 
-  // Expense categories
   const expenseCategories = [
     "Food & Groceries",
     "Rent / Apartment",
@@ -30,7 +42,6 @@ export default function AddTransactionModal({ onClose, onSave, editData }) {
     "Other",
   ];
 
-  // Income categories
   const incomeCategories = [
     "Monthly Salary",
     "One-Time Income",
@@ -42,7 +53,6 @@ export default function AddTransactionModal({ onClose, onSave, editData }) {
     "Other",
   ];
 
-  // Category selection based on type
   const dynamicCategories =
     form.type === "income" ? incomeCategories : expenseCategories;
 
@@ -51,16 +61,26 @@ export default function AddTransactionModal({ onClose, onSave, editData }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (!form.desc || !form.amount || !form.category)
       return alert("Please fill all fields");
-    onSave(form);
+
+    // Convert desc -> description before saving
+    const finalData = {
+      ...form,
+      description: form.desc,
+    };
+
+    delete finalData.desc; // remove the frontend-only field
+
+    onSave(finalData);
     onClose();
   };
 
   return (
     <Backdrop onClick={onClose}>
       <ModalBox onClick={(e) => e.stopPropagation()}>
-        <Title>Add Transaction</Title>
+        <Title>{form.id ? "Edit Transaction" : "Add Transaction"}</Title>
         <Form onSubmit={handleSubmit}>
           
           <Label>Date</Label>
@@ -90,7 +110,7 @@ export default function AddTransactionModal({ onClose, onSave, editData }) {
               setForm({
                 ...form,
                 type: e.target.value,
-                category: "", // reset category
+                category: "",
               });
             }}
           >
@@ -131,7 +151,6 @@ export default function AddTransactionModal({ onClose, onSave, editData }) {
     </Backdrop>
   );
 }
-
 
 
 // ===== Styling =====
@@ -199,8 +218,16 @@ const Select = styled.select`
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid ${({ theme }) => theme.colors.border};
-  background: #fafafa;
+  background: ${({ theme }) => theme.colors.inputBg || "#fafafa"};
   font-size: 1rem;
+  color: ${({ theme }) => theme.colors.text};
+  appearance: none;
+  -webkit-appearance: none;
+
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%2300A86B' height='18' viewBox='0 0 20 20' width='18' xmlns='http://www.w3.org/2000/svg'><path d='M5.516 7.548l4.484 4.484 4.484-4.484L16 8.548l-6 6-6-6z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.colors.accent};
@@ -216,23 +243,33 @@ const ButtonRow = styled.div`
 `;
 
 const Button = styled.button`
-  padding: 10px 20px;
-  border-radius: 999px;
+  padding: 9px 18px;
+  border-radius: 8px;
   font-weight: 600;
-  border: none;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: 0.25s;
 
+  border: none;
+  transition: 0.15s ease;
+  
   ${({ variant, theme }) =>
     variant === "save"
       ? `
       background: ${theme.colors.accent};
-      color: #fff;
-      &:hover { background: #00c56b; }
+      color: white;
+
+      &:hover {
+        background: #00b96a;
+      }
     `
       : `
-      background: #f3f3f3;
+      background: #e7e7e7;
       color: #333;
-      &:hover { background: #e5e5e5; }
+      border: 1px solid #d0d0d0;
+
+      &:hover {
+        background: #dadada;
+      }
     `}
 `;
+

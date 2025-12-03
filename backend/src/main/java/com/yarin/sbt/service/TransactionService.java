@@ -30,6 +30,26 @@ public class TransactionService {
         return repo.findByUserId(userId);
     }
 
+    public Transaction update(Long id, Transaction data, Long userId) {
+
+        Transaction existing = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+
+        // לוודא שזה שייך למשתמש שמבצע את העדכון
+        if (!existing.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Forbidden");
+        }
+
+        existing.setAmount(data.getAmount());
+        existing.setCategory(data.getCategory());
+        existing.setDate(data.getDate());
+        existing.setDescription(data.getDescription());
+        existing.setType(data.getType());
+
+        return repo.save(existing);
+    }
+
+
     public void delete(Long id, Long userId) {
         Transaction t = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));

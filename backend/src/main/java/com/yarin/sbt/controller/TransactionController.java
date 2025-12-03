@@ -36,6 +36,18 @@ public class TransactionController {
         return service.add(t, userId);
     }
 
+    @PutMapping("/{id}")
+    public Transaction update(
+            @PathVariable("id") Long id,
+            @RequestBody Transaction updated,
+            HttpServletRequest req
+    ) {
+        Long userId = getUserId(req);
+        return service.update(id, updated, userId);
+    }
+
+
+
     @DeleteMapping("/{id}")
     public void remove(@PathVariable("id") Long id, HttpServletRequest req) {
         Long userId = getUserId(req);

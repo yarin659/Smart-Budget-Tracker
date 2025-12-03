@@ -1,4 +1,4 @@
-package com.yarin.sbt.schedule;
+package com.yarin.sbt.scheduler;
 
 import com.yarin.sbt.model.Goal;
 import com.yarin.sbt.repository.GoalRepository;
@@ -31,7 +31,7 @@ public class GoalScheduler {
             if (g.getMonthlyAmount() == null) continue;
             if (g.getMonthlyAmount() <= 0) continue;
 
-            // זה היום של ההפקדה?
+
             if (g.getMonthlyDay() == todayDay) {
 
                 double newVal = g.getCurrentAmount() + g.getMonthlyAmount();

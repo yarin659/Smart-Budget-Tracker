@@ -3,25 +3,51 @@ import { createContext, useState, useEffect } from "react";
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem("token") || null);
+  const [userId, setUserId] = useState(localStorage.getItem("userId") || null);
+
+  // ⭐ זה החדש — user
+  const [user, setUser] = useState(
+    localStorage.getItem("userId")
+      ? { id: localStorage.getItem("userId"), token: localStorage.getItem("token") }
+      : null
+  );
 
   useEffect(() => {
-    const saved = localStorage.getItem("user");
-    if (saved) setUser(JSON.parse(saved));
+    const savedToken = localStorage.getItem("token");
+    const savedUserId = localStorage.getItem("userId");
+
+    if (savedToken && savedUserId) {
+      setToken(savedToken);
+      setUserId(savedUserId);
+
+      // ⭐ נטען גם את ה-user
+      setUser({ id: savedUserId, token: savedToken });
+    }
   }, []);
 
-  const login = (u) => {
-    setUser(u);
-    localStorage.setItem("user", JSON.stringify(u));
+  const login = ({ token, userId }) => {
+    setToken(token);
+    setUserId(userId);
+
+    // ⭐ קריטי — ליצור user אובייקט
+    setUser({ id: userId, token });
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("userId", userId);
   };
 
   const logout = () => {
+    setToken(null);
+    setUserId(null);
     setUser(null);
-    localStorage.removeItem("user");
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ token, userId, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

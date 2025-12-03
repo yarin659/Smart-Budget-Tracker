@@ -8,7 +8,7 @@ export const SummaryCards = ({ balance, income, expenses }) => (
       <IconWrapper>
         <DollarSign
           size={32}
-          color={balance <= 0 ? "#00b977" : "#ff4d4d"}
+          color={balance >= 0 ? "#00b977" : "#ff4d4d"}
         />
       </IconWrapper>
 
@@ -17,10 +17,10 @@ export const SummaryCards = ({ balance, income, expenses }) => (
       <Amount
         type={balance >= 0 ? "income" : "expense"}
         style={{
-          color: balance <= 0 ? "#00b977" : "#ff4d4d"
+          color: balance >= 0 ? "#00b977" : "#ff4d4d"
         }}
       >
-        {balance <= 0
+        {balance >= 0
           ? `+${balance.toLocaleString()} ₪`
           : `-${Math.abs(balance).toLocaleString()} ₪`}
       </Amount>
@@ -32,7 +32,7 @@ export const SummaryCards = ({ balance, income, expenses }) => (
         <ArrowUpCircle size={32} color="#00b977" />
       </IconWrapper>
       <Title>Income</Title>
-      <Amount type="income">+{income.toLocaleString()} ₪</Amount>
+      <Amount type="income"> +{income.toLocaleString()} ₪</Amount>
     </Card>
 
     <Card>
@@ -40,7 +40,7 @@ export const SummaryCards = ({ balance, income, expenses }) => (
         <ArrowDownCircle size={32} color="#ff4d4d" />
       </IconWrapper>
       <Title>Expenses</Title>
-      <Amount type="expense">{expenses.toLocaleString()} ₪</Amount>
+      <Amount type="expense"> -{expenses.toLocaleString()} ₪</Amount>
     </Card>
   </Cards>
 );
