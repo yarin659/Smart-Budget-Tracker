@@ -17,7 +17,7 @@ public class GoalScheduler {
         this.repo = repo;
     }
 
-    // רץ כל יום בחצות
+    // Every_Midnight
     @Scheduled(cron = "0 0 0 * * *")
     public void applyMonthlyDeposits() {
 
