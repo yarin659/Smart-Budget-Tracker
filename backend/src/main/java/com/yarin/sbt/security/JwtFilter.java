@@ -28,9 +28,8 @@ public class JwtFilter extends OncePerRequestFilter {
         if (auth != null && auth.startsWith("Bearer ")) {
             String token = auth.substring(7);
 
-            Long userId = jwt.validateAndGetUserId(token); // ⭐ THIS IS THE CORRECT METHOD
+            Long userId = jwt.validateAndGetUserId(token); 
 
-            // שמור את ה-userId שיהיה נגיש בקונטרולרים
             req.setAttribute("userId", userId);
         }
 
