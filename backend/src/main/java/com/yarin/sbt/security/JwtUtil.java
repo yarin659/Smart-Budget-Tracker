@@ -10,15 +10,13 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // *** שים לב: במציאות כדאי להעביר את זה ל-application.properties ***
     private final Key key = Keys.hmacShaKeyFor(
             "change-this-secret-change-this-secret-32chars".getBytes()
     );
 
-    // תוקף של שבוע
+    
     private final long expirationMs = 1000L * 60 * 60 * 24 * 7;
 
-    // יצירת טוקן – שם ב-subject את ה-id של המשתמש
     public String generateToken(Long userId) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + expirationMs);
@@ -31,7 +29,6 @@ public class JwtUtil {
                 .compact();
     }
 
-    // מפענח טוקן ומחזיר userId
     public Long validateAndGetUserId(String token) {
         try {
             Claims claims = Jwts.parserBuilder()
