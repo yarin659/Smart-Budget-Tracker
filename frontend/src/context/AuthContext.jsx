@@ -6,7 +6,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("token") || null);
   const [userId, setUserId] = useState(localStorage.getItem("userId") || null);
 
-  // ⭐ זה החדש — user
+  //  — user
   const [user, setUser] = useState(
     localStorage.getItem("userId")
       ? { id: localStorage.getItem("userId"), token: localStorage.getItem("token") }
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
       setToken(savedToken);
       setUserId(savedUserId);
 
-      // ⭐ נטען גם את ה-user
+      // -user
       setUser({ id: savedUserId, token: savedToken });
     }
   }, []);
@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }) => {
     setToken(token);
     setUserId(userId);
 
-    // ⭐ קריטי — ליצור user אובייקט
     setUser({ id: userId, token });
 
     localStorage.setItem("token", token);
