@@ -33,7 +33,7 @@ public class SecurityConfig {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ⭐ חובה
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().permitAll()
@@ -43,12 +43,12 @@ public class SecurityConfig {
         return http.build();
     }
 
-    //  הגדרה מלאה ל-CORS
+    // CORS
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
 
-        cfg.setAllowedOrigins(List.of("http://localhost:5173")); // ה-React שלך
+        cfg.setAllowedOrigins(List.of("http://localhost:5173"));    
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setExposedHeaders(List.of("*"));
